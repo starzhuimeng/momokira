@@ -8,9 +8,8 @@ return {
       options = {
         offsets = {
           {
-            filetype = "NvimTree",
+            filetype = "neo-tree",
             text = "工作区",
-            highlight = "Directory",
             text_align = "center",
           },
         },

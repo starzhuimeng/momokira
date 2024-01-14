@@ -44,7 +44,7 @@ map("v", "<C-s>", "<Esc><Esc>:w<CR>", opt)
 map("n", "<C-a>", "ggVG", opt)
 map("v", "<C-a>", "ggVG", opt)
 -- 文件树
-map("n", "<leader>e", ":NvimTreeToggle<CR>", opt)
+map("n", "<leader>e", ":Neotree toggle<CR>", opt)
 -- commend
 map("n", ";", ":", opt)
 map("v", ";", ":", opt)

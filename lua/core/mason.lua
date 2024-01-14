@@ -1,86 +1,125 @@
-function join_paths(...)
-  local result = table.concat({ ... }, path_sep)
-  return result
-end
-
-local config = {
-  ui = {
-    check_outdated_packages_on_open = true,
-    width = 0.8,
-    height = 0.9,
-    border = "rounded",
-    keymaps = {
-      toggle_package_expand = "<CR>",
-      install_package = "i",
-      update_package = "u",
-      check_package_version = "c",
-      update_all_packages = "U",
-      check_outdated_packages = "C",
-      uninstall_package = "X",
-      cancel_installation = "<C-c>",
-      apply_language_filter = "<C-f>",
+return {
+  {
+    "williamboman/mason.nvim",
+    opts = function(_, opts)
+      -- vim.list_extend(opts.ensure_installed, {
+      --   "stylua",
+      --   "css-lsp",
+      --   "vue-language-server",
+      --   "html-lsp",
+      --   -- "typescript-language-server",
+      --   "json-lsp",
+      --   -- 'eslint-lsp',
+      --   -- 'eslint_d',
+      --   -- 'prettier',
+      --   -- 'prettierd',
+      --   "emmet-ls",
+      -- })
+    end,
+  },
+  {
+    "nvimdev/lspsaga.nvim",
+    opts = {
+      ui = {
+        border = "rounded",
+      },
     },
   },
-
-  icons = {
-    package_installed = "◍",
-    package_pending = "◍",
-    package_uninstalled = "◍",
+  {
+    "neovim/nvim-lspconfig",
+    cmd = { "Mason", "Neoconf" },
+    event = { "BufReadPost", "BufNewFile" },
+    dependencies = {
+      "williamboman/mason.nvim",
+      "williamboman/mason-lspconfig.nvim", -- 这个相当于mason.nvim和lspconfig的桥梁
+      "nvimdev/lspsaga.nvim",
+    },
+    init = function()
+      -- 使用lspsaga来替换一部分功能
+      -- local keys = require("lazyvim.plugins.lsp.keymaps").get()
+      -- keys[#keys + 1] = { "K", "<cmd>Lspsaga hover_doc<cr>" }
+      -- keys[#keys + 1] = { "<leader>cr", "<cmd>Lspsaga rename<cr>" }
+      -- keys[#keys + 1] = { "<leader>ol", "<cmd>Lspsaga outline<cr>" }
+      -- keys[#keys + 1] = { "<leader>ca", "<cmd>Lspsaga code_action<cr>" }
+    end,
+    opts = {
+      inlay_hints = { enabled = true },
+      setup = {
+        eslint = function()
+          require("lazyvim.util").lsp.on_attach(function(client)
+            if client.name == "eslint" then
+              client.server_capabilities.documentFormattingProvider = true
+            elseif client.name == "tsserver" then
+              client.server_capabilities.documentFormattingProvider = false
+            end
+          end)
+        end,
+      },
+      ---@type lspconfig.options
+      servers = {
+        eslint = {},
+        lua_ls = {
+          single_file_support = true,
+          settings = {
+            Lua = {
+              workspace = { checkThirdParty = false },
+              telemetry = { enable = false },
+              diagnostics = {
+                globals = { "vim" },
+              },
+            },
+          },
+        },
+        cssls = {
+          settings = {},
+        },
+        emmet_ls = {
+          filetypes = {
+            "html",
+            "typescriptreact",
+            "javascriptreact",
+            "css",
+            "sass",
+            "scss",
+            "less",
+            "markdown",
+            "vue",
+          },
+          init_options = { -- better html/css snippets supported
+            html = {
+              options = {
+                -- For possible options, see: https://github.com/emmetio/emmet/blob/master/src/config.ts#L79-L26
+                ["bem.enabled"] = true,
+              },
+            },
+          },
+        },
+        volar = {
+          root_dir = function(...)
+            local util = require("lspconfig.util")
+            return util.root_pattern("vite.config.ts")(...)
+          end,
+          filetypes = { "typescript", "javascript", "javascriptreact", "typescriptreact", "vue" },
+          settings = {
+            volar = {
+              codeLens = {
+                references = true,
+                pugTools = true,
+                scriptSetupTools = true,
+              },
+              takeOverMode = {
+                extension = "Vue.volar",
+              },
+            },
+          },
+        },
+      },
+    },
   },
-
-  -- NOTE: should be available in $PATH
-  install_root_dir = join_paths(vim.fn.stdpath("data"), "mason"),
-
-  -- NOTE: already handled in the bootstrap stage
-  PATH = "skip",
-
-  pip = {
-    upgrade_pip = false,
-    -- These args will be added to `pip install` calls. Note that setting extra args might impact intended behavior
-    -- and is not recommended.
-    --
-    -- Example: { "--proxy", "https://proxyserver" }
-    install_args = {},
+  -- haskell tools for haskell language server
+  {
+    "mrcjkb/haskell-tools.nvim",
+    version = "^3", -- Recommended
+    ft = { "haskell", "lhaskell", "cabal", "cabalproject" },
   },
-
-  -- Controls to which degree logs are written to the log file. It's useful to set this to vim.log.levels.DEBUG when
-  -- debugging issues with package installations.
-  log_level = vim.log.levels.INFO,
-
-  -- Limit for the maximum amount of packages to be installed at the same time. Once this limit is reached, any further
-  -- packages that are requested to be installed will be put in a queue.
-  max_concurrent_installers = 4,
-
-  -- [Advanced setting]
-  -- The registries to source packages from. Accepts multiple entries. Should a package with the same name exist in
-  -- multiple registries, the registry listed first will be used.
-  registries = {
-    "lua:mason-registry.index",
-    "github:mason-org/mason-registry",
-  },
-
-  -- The provider implementations to use for resolving supplementary package metadata (e.g., all available versions).
-  -- Accepts multiple entries, where later entries will be used as fallback should prior providers fail.
-  providers = {
-    "mason.providers.registry-api",
-    "mason.providers.client",
-  },
-
-  github = {
-    -- The template URL to use when downloading assets from GitHub.
-    -- The placeholders are the following (in order):
-    -- 1. The repository (e.g. "rust-lang/rust-analyzer")
-    -- 2. The release version (e.g. "v0.3.0")
-    -- 3. The asset name (e.g. "rust-analyzer-v0.3.0-x86_64-unknown-linux-gnu.tar.gz")
-    download_url_template = "https://github.com/%s/releases/download/%s/%s",
-  },
-
-  on_config_done = nil,
-}
-
-return {
-  "williamboman/mason.nvim",
-  config = function()
-    require("mason").setup(config)
-  end,
 }
